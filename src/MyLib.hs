@@ -1,4 +1,6 @@
-module MyLib (someFunc) where
+module MyLib (mkData) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import qualified PlutusTx as PlutusTx
+
+mkData :: PlutusTx.Data
+mkData = PlutusTx.toData (Just 1 :: Maybe Integer)
