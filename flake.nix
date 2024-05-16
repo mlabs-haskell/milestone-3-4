@@ -13,11 +13,13 @@
     iohk-nix.inputs.nixpkgs.follows = "haskell-nix/nixpkgs";
     CHaP.url = "github:input-output-hk/cardano-haskell-packages?ref=repo";
     CHaP.flake = false;
+    hci-effects.url = "github:mlabs-haskell/hercules-ci-effects/push-cache-effect";
   };
   outputs = inputs@{ flake-parts, nixpkgs, haskell-nix, iohk-nix, CHaP, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       debug = true;
       systems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" "aarch64-linux" ];
+      imports = [ inputs.hci-effects.flakeModule ];
       perSystem = { config, system, lib, self', ... }:
         let
           pkgs =
@@ -58,5 +60,6 @@
           inherit (flake) devShells;
           packages = flake.packages;
         };
+      herculesCI.ciSystems = [ "x86_64-linux" "x86_64-darwin" ];
     };
 }
