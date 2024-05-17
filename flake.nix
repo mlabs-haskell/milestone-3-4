@@ -50,7 +50,7 @@
                 haskell-language-server = { };
                 hlint = { };
                 cabal-fmt = { };
-                fourmolu = { };
+                ormolu = { };
                 hspec-discover = { };
                 markdown-unlit = { };
               };
