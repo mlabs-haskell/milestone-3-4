@@ -15,7 +15,7 @@ extra-doc-files: CHANGELOG.md
 
 -- extra-source-files:
 
--- Some PlutusTx-sepcific GHC flags and options are added according to this document:
+-- Some PlutusTx-specific GHC flags and options are added according to this document:
 -- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html#
 common lang
   ghc-options:

@@ -72,7 +72,6 @@
             deadnix.enable = true;
             statix.enable = true;
             cabal-fmt.enable = true;
-            # TODO(chfanghr): Configuration for ormolu
             ormolu.enable = true;
             shellcheck.enable = true;
             typos.enable = true;
