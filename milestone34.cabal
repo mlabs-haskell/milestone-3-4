@@ -15,24 +15,30 @@ extra-doc-files: CHANGELOG.md
 
 -- extra-source-files:
 
-common warnings
-  ghc-options: -Wall
+-- Some PlutusTx-sepcific GHC flags and options are added according to this document:
+-- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html#
+common lang
+  ghc-options:
+    -Wall -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fplugin-opt PlutusTx.Plugin:defer-errors
 
 library
-  import:           warnings
+  import:           lang
   exposed-modules:  MyLib
 
   -- other-modules:
   -- other-extensions:
   build-depends:
-    , base         ^>=4.18.2.0
+    , base       ^>=4.18.2.0
     , plutus-tx
 
   hs-source-dirs:   src
   default-language: Haskell2010
 
 test-suite milestone34-test
-  import:           warnings
+  import:           lang
   default-language: Haskell2010
 
   -- other-modules:
@@ -41,5 +47,5 @@ test-suite milestone34-test
   hs-source-dirs:   test
   main-is:          Main.hs
   build-depends:
-    , base                ^>=4.18.2.0
+    , base         ^>=4.18.2.0
     , milestone34
