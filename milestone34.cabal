@@ -1,0 +1,51 @@
+cabal-version:   3.0
+name:            milestone34
+version:         0.0.0.1
+
+-- synopsis:
+-- description:
+license:         Apache-2.0
+license-file:    LICENSE
+author:          MLabs
+maintainer:      mlabs@mlabs.city
+
+-- copyright:
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+-- extra-source-files:
+
+-- Some PlutusTx-specific GHC flags and options are added according to this document:
+-- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html#
+common lang
+  ghc-options:
+    -Wall -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
+    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
+    -fplugin-opt PlutusTx.Plugin:defer-errors
+
+library
+  import:           lang
+  exposed-modules:  MyLib
+
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+    , base       ^>=4.18.2.0
+    , plutus-tx
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+
+test-suite milestone34-test
+  import:           lang
+  default-language: Haskell2010
+
+  -- other-modules:
+  -- other-extensions:
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          Main.hs
+  build-depends:
+    , base         ^>=4.18.2.0
+    , milestone34
