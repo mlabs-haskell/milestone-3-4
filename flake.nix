@@ -74,7 +74,10 @@
             cabal-fmt.enable = true;
             ormolu.enable = true;
             shellcheck.enable = true;
-            typos.enable = true;
+            typos = {
+              enable = true;
+              settings.configPath = "./.typos.toml";
+            };
             markdownlint.enable = true;
           };
         };
