@@ -1,6 +1,7 @@
 module MyLib (mkData) where
 
-import qualified PlutusTx as PlutusTx
+import PlutusTx (Data, toData)
+import PlutusTx.Prelude
 
-mkData :: PlutusTx.Data
-mkData = PlutusTx.toData (Just 1 :: Maybe Integer)
+mkData :: Data
+mkData = toData (Just 1 :: Maybe Integer)

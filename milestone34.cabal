@@ -1,6 +1,6 @@
 cabal-version:   3.0
 name:            milestone34
-version:         0.0.0.1
+version:         0.0.1
 
 -- synopsis:
 -- description:
@@ -19,10 +19,38 @@ extra-doc-files: CHANGELOG.md
 -- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html#
 common lang
   ghc-options:
-    -Wall -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-full-laziness -fno-spec-constr -fno-specialise -fno-strictness
-    -fno-unbox-strict-fields -fno-unbox-small-strict-fields
-    -fplugin-opt PlutusTx.Plugin:defer-errors
+    -Wall -Wcompat -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wredundant-constraints -Werror
+    -Wmissing-deriving-strategies -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-full-laziness -fno-spec-constr
+    -fno-specialise -fno-strictness -fno-unbox-strict-fields
+    -fno-unbox-small-strict-fields -fplugin-opt
+    PlutusTx.Plugin:defer-errors
+
+  default-extensions:
+    BinaryLiterals
+    DataKinds
+    DerivingVia
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    NoImplicitPrelude
+    NoStarIsType
+    NumericUnderscores
+    OverloadedStrings
+    PackageImports
+    ScopedTypeVariables
+    StandaloneDeriving
+    Strict
+    TupleSections
+    TypeApplications
 
 library
   import:           lang
