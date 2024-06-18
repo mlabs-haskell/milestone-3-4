@@ -36,8 +36,8 @@
             };
           project = pkgs.haskell-nix.cabalProject' {
             src = ./.;
-            compiler-nix-name = "ghc964";
-            index-state = "2024-01-16T11:00:00Z";
+            compiler-nix-name = "ghc965";
+            index-state = "2024-06-18T00:00:00Z";
             inputMap = {
               "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
             };
