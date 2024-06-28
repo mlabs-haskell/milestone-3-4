@@ -54,7 +54,10 @@ common lang
 
 library
   import:           lang
-  exposed-modules:  MyLib
+  exposed-modules:
+    Bitwise
+    Ed25519
+    SHA512
 
   -- other-modules:
   -- other-extensions:
