@@ -28,10 +28,6 @@ nqueens dim
   where
     bytesNeeded :: Integer
     bytesNeeded = dim `quotient` 8
-    lastRow :: Integer
-    lastRow = dim - 1
-    lastPosition :: Integer
-    lastPosition = dim - 1
     go ::
       Integer ->
       Integer ->
@@ -49,22 +45,32 @@ nqueens dim
                 | row == lastRow -> [(row, available)]
                 | otherwise ->
                     let newDown = writeBit down available False
-                        newLeft = writeBit (shiftByteString (writeBit left available False) 1) 0 True
-                        newRight = writeBit (shiftByteString (writeBit right available False) (-1)) lastPosition True
+                        newLeft = leftRoll left available
+                        newRight = rightRoll right available
                         newRow = row + 1
                      in case go 0 newRow newDown newLeft newRight of
                           [] -> go (selectIx + 1) row down left right
                           next -> (row, available) : next
+    lastRow :: Integer
+    lastRow = dim - 1
+    lastPosition :: Integer
+    lastPosition = dim - 1
+    -- These are needed because the original design assumes that shifts 'fill
+    -- in' with 1s instead of 0s.
+    leftRoll :: BuiltinByteString -> Integer -> BuiltinByteString
+    leftRoll left i = writeBit (shiftByteString (writeBit left i False) 1) 0 True
+    rightRoll :: BuiltinByteString -> Integer -> BuiltinByteString
+    rightRoll right i = writeBit (shiftByteString (writeBit right i False) (-1)) lastPosition True
 
 -- Helpers
 
 {-# INLINE selectByteString #-}
 selectByteString :: Integer -> BuiltinByteString -> Integer
-selectByteString which bs =
-  let ffs = findFirstSetBit bs
-   in if which <= 0
-        then ffs
-        else selectByteString (which - 1) (shiftByteString bs . negate $ ffs + 1)
+selectByteString which bs
+  | which <= 0 = findFirstSetBit bs
+  | otherwise = case selectByteString (which - 1) bs of
+      (-1) -> (-1)
+      i -> i + 1 + findFirstSetBit (shiftByteString bs $ negate (i + 1))
 
 {-# INLINE writeBit #-}
 writeBit :: BuiltinByteString -> Integer -> Bool -> BuiltinByteString

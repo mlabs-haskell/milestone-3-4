@@ -27,6 +27,10 @@ common lang
     -fno-unbox-small-strict-fields -fplugin-opt
     PlutusTx.Plugin:defer-errors
 
+  build-depends:
+    , base       ^>=4.18.2.0
+    , plutus-tx  >=1.30.0.0
+
   default-extensions:
     BinaryLiterals
     DataKinds
@@ -52,15 +56,26 @@ common lang
     TupleSections
     TypeApplications
 
-library
-  import:           lang
-  exposed-modules:  Milestone3
+  default-language:   Haskell2010
 
-  -- other-modules:
-  -- other-extensions:
+common test-lang
+  import:        lang
   build-depends:
-    , base       ^>=4.18.2.0
-    , plutus-tx  >=1.30.0.0
+    , milestone34
+    , plutus-tx-plugin
+    , tasty
+    , tasty-hunit
 
-  hs-source-dirs:   src
-  default-language: Haskell2010
+  ghc-options:   -O2 -threaded -rtsopts -with-rtsopts=-N
+
+library
+  import:          lang
+  exposed-modules: Milestone3
+  hs-source-dirs:  src
+
+test-suite milestone3-test
+  import:         test-lang
+  type:           exitcode-stdio-1.0
+  main-is:        Main.hs
+  other-modules:  Compile
+  hs-source-dirs: test/milestone-3
