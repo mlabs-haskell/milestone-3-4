@@ -3,8 +3,9 @@
 module Milestone3 (nqueens) where
 
 import PlutusTx.Builtins
-  ( andByteString,
+  ( complementByteString,
     findFirstSetBit,
+    orByteString,
     replicateByte,
     shiftByteString,
     writeBits,
@@ -21,10 +22,10 @@ nqueens dim
   | dim < 8 = []
   | dim `remainder` 8 /= 0 = []
   | otherwise =
-      let down = replicateByte bytesNeeded 0xFF
-          left = replicateByte bytesNeeded 0xFF
-          right = replicateByte bytesNeeded 0xFF
-       in go 0 0 down left right
+      let down = replicateByte bytesNeeded 0x00
+          left = replicateByte bytesNeeded 0x00
+          right = replicateByte bytesNeeded 0x00
+       in go 0 0 down left right (replicateByte bytesNeeded 0xFF)
   where
     bytesNeeded :: Integer
     bytesNeeded = dim `quotient` 8
@@ -34,33 +35,36 @@ nqueens dim
       BuiltinByteString ->
       BuiltinByteString ->
       BuiltinByteString ->
+      BuiltinByteString ->
       [(Integer, Integer)]
-    go selectIx row down left right
+    go selectIx row down left right control
       | selectIx == dim = []
       | otherwise =
-          let opts = andByteString False down . andByteString False left $ right
-              available = selectByteString selectIx opts
+          -- In the original writeup, 0 in a position meant 'occupied'. However,
+          -- this makes updates to the control vectors very annoying, because
+          -- now we have to 'shift in' 1 bits, which costs us an extra two
+          -- copies. We can reduce this by one by instead treating 0 as 'free'.
+          -- Ideally, we would eliminate one more redundant copy, but this
+          -- requires a select0 operation, which can't be implemented
+          -- efficiently. However, given that these copies are per recursive
+          -- call, we can save ourselves considerable effort by avoiding them.
+          let available = selectByteString selectIx control
            in if
                 | available == (-1) -> []
                 | row == lastRow -> [(row, available)]
                 | otherwise ->
-                    let newDown = writeBit down available False
-                        newLeft = leftRoll left available
-                        newRight = rightRoll right available
+                    let newDown = writeBit down available True
+                        newLeft = shiftByteString (writeBit left available True) 1
+                        newRight = shiftByteString (writeBit right available True) (-1)
                         newRow = row + 1
-                     in case go 0 newRow newDown newLeft newRight of
-                          [] -> go (selectIx + 1) row down left right
+                        -- We 'hoist' the control vector as a parameter rather
+                        -- than recomputing it every time we modify selectIx.
+                        newControl = complementByteString . orByteString False newDown . orByteString False newLeft $ newRight
+                     in case go 0 newRow newDown newLeft newRight newControl of
+                          [] -> go (selectIx + 1) row down left right control
                           next -> (row, available) : next
     lastRow :: Integer
     lastRow = dim - 1
-    lastPosition :: Integer
-    lastPosition = dim - 1
-    -- These are needed because the original design assumes that shifts 'fill
-    -- in' with 1s instead of 0s.
-    leftRoll :: BuiltinByteString -> Integer -> BuiltinByteString
-    leftRoll left i = writeBit (shiftByteString (writeBit left i False) 1) 0 True
-    rightRoll :: BuiltinByteString -> Integer -> BuiltinByteString
-    rightRoll right i = writeBit (shiftByteString (writeBit right i False) (-1)) lastPosition True
 
 -- Helpers
 
