@@ -1,12 +1,7 @@
 module Main (main) where
 
-import MyLib (mkData)
-import Prelude qualified as HaskellPrelude
+import Ed25519
+import Prelude (IO)
 
-main :: HaskellPrelude.IO ()
-main = do
-  HaskellPrelude.putStrLn
-    ( "Basic PlutusTx check: "
-        HaskellPrelude.<> HaskellPrelude.show mkData
-    )
-  HaskellPrelude.putStrLn "Test suite not yet implemented."
+main :: IO ()
+main = simpleTest

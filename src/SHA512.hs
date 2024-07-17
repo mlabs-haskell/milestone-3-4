@@ -1,18 +1,42 @@
+{-# HLINT ignore "Redundant bracket" #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-{-# HLINT ignore "Redundant bracket" #-}
-
-module SHA512 (sha512) where
+module SHA512 (sha512, testSha512) where
 
 import Bitwise
+import Crypto.Hash.SHA512 qualified as Reference
+import Data.ByteString.Internal qualified as BS
 import Data.Kind (Type)
 import GHC.ByteOrder (ByteOrder (BigEndian))
 import PlutusTx.Builtins
+  ( Integer,
+    addInteger,
+    andByteString,
+    appendByteString,
+    byteStringToInteger,
+    consByteString,
+    integerToByteString,
+    lengthOfByteString,
+    lessThanEqualsInteger,
+    lessThanInteger,
+    multiplyInteger,
+    orByteString,
+    quotientInteger,
+    rotateByteString,
+    shiftByteString,
+    sliceByteString,
+    subtractInteger,
+    xorByteString,
+  )
+import PlutusTx.Builtins.Internal (BuiltinByteString (..))
 import PlutusTx.Prelude
+import Prelude qualified as P
 
 {-
 import Bitwise
@@ -50,6 +74,22 @@ import Derived (and, foldl)
 import GHC.Num (Integer)
 -}
 
+testSha512 :: BS.ByteString -> P.IO ()
+testSha512 str = do
+  let testBS :: BS.ByteString
+      testBS = str
+
+      testBS_BI :: BuiltinByteString
+      testBS_BI = BuiltinByteString testBS
+
+      !resultRef = Reference.hash testBS
+      !resultPlutus = sha512 testBS_BI
+
+  P.putStrLn "testSha512\n\n"
+  P.putStrLn $ "Test String: " <> P.show testBS <> "\n\n"
+  P.putStrLn $ "Reference Result:\n" <> P.show resultRef <> "\n\n"
+  P.putStrLn $ "Plutus Result:\n" <> P.show resultPlutus <> "\n" <> replicate 20 '-' <> "\n"
+
 -- Based on https://github.com/haskell-hvr/cryptohash-sha512/blob/master/cbits/hs_sha512.h
 sha512 :: BuiltinByteString -> BuiltinByteString
 sha512 input = ctxFinalize (ctxUpdate ctxInit input)
@@ -83,13 +123,13 @@ shiftUInt64 :: Integer -> UInt64 -> UInt64
 shiftUInt64 shift (UInt64 x) = UInt64 . flip shiftByteString shift $ x
 
 andUInt64 :: UInt64 -> UInt64 -> UInt64
-andUInt64 (UInt64 x) (UInt64 y) = UInt64 (andByteString 8 x y)
+andUInt64 (UInt64 x) (UInt64 y) = UInt64 (andByteString False x y)
 
 orUInt64 :: UInt64 -> UInt64 -> UInt64
-orUInt64 (UInt64 x) (UInt64 y) = UInt64 (orByteString 8 x y)
+orUInt64 (UInt64 x) (UInt64 y) = UInt64 (orByteString False x y)
 
 xorUInt64 :: UInt64 -> UInt64 -> UInt64
-xorUInt64 (UInt64 x) (UInt64 y) = UInt64 (xorByteString 8 x y)
+xorUInt64 (UInt64 x) (UInt64 y) = UInt64 (xorByteString False x y)
 
 rotateUInt64 :: Integer -> UInt64 -> UInt64
 rotateUInt64 rotation (UInt64 x) = UInt64 . flip rotateByteString rotation $ x

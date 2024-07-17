@@ -20,7 +20,7 @@ extra-doc-files: CHANGELOG.md
 common lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints -Werror
+    -Wincomplete-uni-patterns -Wredundant-constraints
     -Wmissing-deriving-strategies -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas -fno-full-laziness -fno-spec-constr
     -fno-specialise -fno-strictness -fno-unbox-strict-fields
@@ -58,12 +58,16 @@ library
     Bitwise
     Ed25519
     SHA512
+    SHA512V2
 
   -- other-modules:
   -- other-extensions:
   build-depends:
-    , base       ^>=4.18.2.0
-    , plutus-tx  >=1.30.0.0
+    , base               ^>=4.18.2.0
+    , bytestring
+    , cryptohash-sha512
+    , ed25519
+    , plutus-tx          >=1.30.0.0
 
   hs-source-dirs:   src
   default-language: Haskell2010
