@@ -42,6 +42,9 @@ prettify msg = spacer <> "\n" <> msg' <> "\n" <> spacer <> "\n"
     msg' = concatMap (<> "\n\n") msg
     spacer = replicate 20 '-'
 
+sha512Ref :: BuiltinByteString -> BuiltinByteString
+sha512Ref (BuiltinByteString inp) = BuiltinByteString $ Reference.hash inp
+
 sha512 :: BuiltinByteString -> BuiltinByteString
 sha512 bs = Debug.trace msg out
   where

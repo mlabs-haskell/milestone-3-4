@@ -1,20 +1,48 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 -- Based on https://ed25519.cr.yp.to/python/ed25519.py
 module Ed25519 where
 
-import Crypto.Sign.Ed25519 (PublicKey (..), Signature (..))
+import Crypto.Sign.Ed25519 (PublicKey (..), SecretKey (..), Signature (..))
 import Crypto.Sign.Ed25519 qualified as Reference
 import Data.ByteString qualified as BS
-import Data.Foldable (Foldable (foldl'))
 import Debug.Trace (traceM)
 import Debug.Trace qualified as Debug
 import GHC.ByteOrder (ByteOrder (..))
 import PlutusTx.Builtins
+  ( BuiltinByteString,
+    Integer,
+    appendByteString,
+    byteStringToInteger,
+    equalsInteger,
+    integerToByteString,
+    lengthOfByteString,
+    multiplyInteger,
+    readBit,
+    remainderInteger,
+    sliceByteString,
+    subtractInteger,
+  )
 import PlutusTx.Builtins.Internal (BuiltinByteString (..))
-import PlutusTx.Prelude hiding (inv)
+import PlutusTx.Prelude
+  ( AdditiveGroup ((-)),
+    AdditiveSemigroup ((+)),
+    Bool,
+    Eq ((==)),
+    MultiplicativeSemigroup ((*)),
+    Semigroup ((<>)),
+    divMod,
+    fst,
+    not,
+    odd,
+    otherwise,
+    snd,
+    ($),
+    (&&),
+    (.),
+    (/=),
+  )
 import SHA512V2 (sha512)
 import Prelude qualified as P
 
@@ -29,7 +57,15 @@ checkValid sig message pubKey =
       !a = decodePoint pubKey
       !s = decodeInt (sliceByteString 32 32 sig)
       !h = hint (appendByteString (encodePoint r) (appendByteString pubKey message))
-   in eqPoint (scalarMult bPoint s) (edwards r (scalarMult a h))
+      msg =
+        "checkValid\n\n"
+          <> "sig len: "
+          <> P.show (lengthOfByteString sig)
+          <> "\n\nmsg len: "
+          <> P.show (lengthOfByteString message)
+          <> "\n\npk len: "
+          <> P.show (lengthOfByteString pubKey)
+   in Debug.trace msg $ eqPoint (scalarMult bPoint s) (edwards r (scalarMult a h))
 
 -- Helpers
 
@@ -37,11 +73,8 @@ newtype Point = Point (Integer, Integer) deriving stock (P.Show)
 
 eqPoint :: Point -> Point -> Bool
 eqPoint p1@(Point (x, y)) p2@(Point (x1, y1)) =
-  Debug.trace msg
-    $ equalsInteger x x1
+  equalsInteger x x1
     && equalsInteger y y1
-  where
-    msg = "eqPoint:\n\np1:\n" <> P.show p1 <> "\n\np2:\n" <> P.show p2
 
 -- 2 ^ 255 - 19, but as a constant
 q :: Integer
@@ -51,7 +84,7 @@ bx :: Integer
 bx = xRecover by
 
 by :: Integer
-by = multiplyInteger 4 (inv 5)
+by = 4 * inv 5
 
 bPoint :: Point
 bPoint = Point (remainderInteger bx q, remainderInteger by q)
@@ -70,45 +103,34 @@ decodePoint bs =
             else Point (x, y)
 
 decodeInt :: BuiltinByteString -> Integer
-decodeInt bibs = Debug.trace ("decodeInt:\n" <> P.show bibs) $ byteStringToInteger LittleEndian bibs
+decodeInt = byteStringToInteger LittleEndian
 
 hint :: BuiltinByteString -> Integer
-hint bibs = Debug.trace ("hint:\n" <> P.show bibs) $ byteStringToInteger LittleEndian . sha512 $ bibs
+hint = byteStringToInteger BigEndian . sha512
 
 encodePoint :: Point -> BuiltinByteString
-encodePoint (Point (_, y)) = Debug.trace "encodePoint" $ integerToByteString LittleEndian 32 y
+encodePoint (Point (_, y)) = integerToByteString LittleEndian 32 y
 
 scalarMult :: Point -> Integer -> Point
 scalarMult p e =
-  Debug.trace "scalarMult"
-    $ if equalsInteger e 0
-      then Point (0, 1)
-      else
-        let q' = scalarMult p (quotientInteger e 2)
-            q'' = edwards q' q'
-         in if odd e then edwards q'' p else q''
+  if equalsInteger e 0
+    then Point (0, 1)
+    else
+      let q' = scalarMult p (e `div` 2)
+          q'' = edwards q' q'
+       in if odd e then edwards q'' p else q''
 
 d :: Integer
-d = multiplyInteger (subtractInteger 1 121665) (inv 121666)
+d = multiplyInteger (-121665) (inv 121666)
 
 edwards :: Point -> Point -> Point
-edwards (Point (x1, y1)) (Point (x2, y2)) =
-  Debug.trace "edwards"
-    $ let pointSmush = multiplyInteger x1 (multiplyInteger x2 (multiplyInteger y1 y2))
-          x3InvExp = addInteger 1 (multiplyInteger d pointSmush)
-          y3InvExp = subtractInteger 1 (multiplyInteger d pointSmush)
-          x3 =
-            multiplyInteger
-              (addInteger (multiplyInteger x1 y2) (multiplyInteger x2 y1))
-              (inv x3InvExp)
-          y3 =
-            multiplyInteger
-              (addInteger (multiplyInteger y1 y2) (multiplyInteger x1 x2))
-              (inv y3InvExp)
-       in Point (remainderInteger x3 q, remainderInteger y3 q)
+edwards (Point (x1, y1)) (Point (x2, y2)) = Point (x3 `mod` q, y3 `mod` q)
+  where
+    x3 = (x1 * y2 + x2 * y1) * inv (1 + d * x1 * x2 * y1 * y2)
+    y3 = (y1 * y2 + x1 * x2) * inv (1 - d * x1 * x2 * y1 * y2)
 
 inv :: Integer -> Integer
-inv x = Debug.trace ("inv: " <> P.show x) expMod x (subtractInteger q 2) q
+inv x = expMod x (q - 2) q
 
 div :: Integer -> Integer -> Integer
 div x y = fst $ divMod x y
@@ -117,7 +139,7 @@ mod :: Integer -> Integer -> Integer
 mod x y = snd $ divMod x y
 
 expMod :: Integer -> Integer -> Integer -> Integer
-expMod x 0 p = 1
+expMod _ 0 _ = 1
 expMod x 1 p = x `mod` p
 expMod !x !y !p
   | odd y =
@@ -128,37 +150,47 @@ expMod !x !y !p
        in (x' `mod` p * x' `mod` p) `mod` p
 
 i :: Integer
-i = expMod 2 (quotientInteger (subtractInteger q 1) 4) q
+i = expMod 2 ((q - 1) `div` 4) q
+
+l :: Integer
+l = 2 P.^ 252 + 27742317777372353535851937790883648493
+
+sign :: BuiltinByteString -> BuiltinByteString -> BuiltinByteString -> BuiltinByteString
+sign msg privKey pubKey = encodePoint r' <> integerToByteString LittleEndian 32 s
+  where
+    b = 256
+    h = sha512 privKey
+    a = byteStringToInteger BigEndian (sliceByteString 3 (b - 4) h)
+    r = hint (sliceByteString 32 32 h <> msg)
+    r' = scalarMult bPoint r
+    s = (r + hint (encodePoint r' <> pubKey <> msg) * a) `mod` l
 
 xRecover :: Integer -> Integer
-xRecover y =
-  Debug.trace "xRecover"
-    $ let xx = multiplyInteger (multiplyInteger y (subtractInteger y 1)) (inv (multiplyInteger d (multiplyInteger y (addInteger y 1))))
-          x = Debug.trace msg $ expMod xx (quotientInteger (addInteger q 3) 8) q
-          cond1 = not (equalsInteger 0 (remainderInteger (subtractInteger (multiplyInteger x x) xx) q))
-          cond2 = odd x
-          cond1Res = remainderInteger (multiplyInteger x i) q
-          cond2Res = subtractInteger q x
-          cond12Res = subtractInteger q cond1Res
-
-          msg = "xRecover(expMod args)\n\nx: " <> P.show xx <> "\n\ny: " <> P.show (quotientInteger (addInteger q 3) 8) <> "\n\np: " <> P.show q <> "\n" <> replicate 20 '-' <> "\n\n"
-       in Debug.trace msg
-            $ if cond1
-              then (if cond2 then cond12Res else cond1Res)
-              else (if cond2 then cond2Res else x)
+xRecover y
+  | cond1 && not cond2 = xA
+  | cond1 && cond2 = xAB
+  | not cond1 && cond2 = xB
+  | otherwise = x
+  where
+    xx = (y * (y - 1)) * inv (d * y * (y + 1))
+    x = expMod xx ((q + 3) `div` 8) q
+    xA = (x * i) `mod` q
+    xB = q - x
+    xAB = q - xA
+    cond1 = (x * x - xx) `mod` q /= 0 -- x here is always the input x
+    cond2 = if cond1 then odd xA else odd x
 
 simpleTest :: P.IO ()
 simpleTest = do
-  traceM "A"
-  (refPK@(PublicKey pk), refSK) <- Reference.createKeypair
+  (refPK@(PublicKey pk), refSK@(SecretKey sk)) <- Reference.createKeypair
   let rawMsg :: BS.ByteString
       !rawMsg = "helloworld"
-  traceM "B"
-  let !signedRawRef@(Signature signedRaw) = Reference.dsign refSK rawMsg
-  traceM "C"
-  let !verifyRaw = Reference.dverify refPK rawMsg signedRawRef
-  traceM "D"
-  let !verifyPlutus = checkValid (BuiltinByteString signedRaw) (BuiltinByteString rawMsg) (BuiltinByteString pk)
-  traceM "E"
+      !signedRawRef@(Signature signedRaw) = Reference.dsign refSK rawMsg
+      !signedPlutus = sign (BuiltinByteString rawMsg) (BuiltinByteString sk) (BuiltinByteString pk)
+      !verifyRaw = Reference.dverify refPK rawMsg signedRawRef
+      !verifyPlutus = checkValid (BuiltinByteString signedRaw) (BuiltinByteString rawMsg) (BuiltinByteString pk)
+  traceM $ "REFERENCE SIGNATURE: " <> P.show signedRaw
+  traceM $ "PLUTUS SIGNATURES: " <> P.show signedPlutus
+
   traceM $ "REFERENCE IMPLEMENTATION VERIFICATION: " <> P.show verifyRaw
   traceM $ "PLUTUS IMPLEMENTATION VERIFICATION: " <> P.show verifyPlutus
