@@ -4,13 +4,23 @@ b = 256
 q = 2**255 - 19
 l = 2**252 + 27742317777372353535851937790883648493
 
+def prettyBin(b):
+  return format(b, '08b')
+
+def prettyBinStr(s):
+  return '\n'.join(list(map(prettyBin,map(ord,list(s)))))
+
+
 def H(m):
   return hashlib.sha512(m).digest()
 
-def expmod(b,e,m):
+def expmod(b,_e,m):
+  e = int(_e)
   if e == 0: return 1
   t = expmod(b,e/2,m)**2 % m
   if e & 1: t = (t*b) % m
+  # msg = "\n\nexpmod\nb: " + str(b) + "\ne: " + str(e) + "\nm: " + str(m) + "\nresult: " + str(t) + "\n\n"
+  # print(msg)
   return t
 
 def inv(x):
@@ -22,6 +32,7 @@ I = expmod(2,(q-1)/4,q)
 def xrecover(y):
   xx = (y*y-1) * inv(d*y*y+1)
   x = expmod(xx,(q+3)/8,q)
+  # print("----\ny: " + str(y) + "\nxx: " + str(xx) + "\nx: " + str(x) + "\n-----")
   if (x*x - xx) % q != 0: x = (x*I) % q
   if x % 2 != 0: x = q-x
   return x
@@ -67,7 +78,9 @@ def publickey(sk):
 
 def Hint(m):
   h = H(m)
-  return sum(2**i * bit(h,i) for i in range(2*b))
+  result = sum(2**i * bit(h,i) for i in range(2*b))
+  # print('hint\nm:\n' + prettyBinStr(m) + "\nresult: " + str(result))
+  return result
 
 def signature(m,sk,pk):
   h = H(sk)
@@ -88,17 +101,51 @@ def decodeint(s):
 def decodepoint(s):
   y = sum(2**i * bit(s,i) for i in range(0,b-1))
   x = xrecover(y)
-  if x & 1 != bit(s,b-1): x = q-x
+  # print("xrecover: " + str(x))
+  if x & 1 != bit(s,b-1):
+    msg = ("decodepoint : condition trigger\n\nx: " + str(x) +
+           "\n\nx & 1: " + str(x & 1) + "\n\n" +
+           "\bit(s,b-1): " + str(bit(s,b-1)) + "\n\n" +
+           "y: " + str(y) + "\n\n" +
+           "x (orig): " + str(x) + "\n\n"  +
+           "q-x: " + str(q-x) + "\n\n" +
+           "input (hex): " + s.encode("hex") + "\n\n"
+           "input (bin):\n" + prettyBinStr(s))
+    x = q-x
+    print(msg)
   P = [x,y]
-  if not isoncurve(P): raise Exception("decoding point that is not on curve")
+  # if not isoncurve(P): raise Exception("decoding point that is not on curve")
   return P
 
 def checkvalid(s,m,pk):
-  if len(s) != b/4: raise Exception("signature length is wrong")
+  if len(s) != b/4: raise Exception("signature length is wrong:\n" + str(s) + "\n" + str(len(s)))
   if len(pk) != b/8: raise Exception("public-key length is wrong")
+
+  sliceR = s[0:b/8]
   R = decodepoint(s[0:b/8])
   A = decodepoint(pk)
   S = decodeint(s[b/8:b/4])
   h = Hint(encodepoint(R) + pk + m)
+  msg = ("\n----------checkValid-------\n\n"
+          + "s: " + str(s).encode("hex") + "\n\n"
+          + "m: " + str(m) + "\n\n"
+          + "pk: " + str (pk).encode("hex") + "\n\n"
+          + "R: " + str(R) + "\n\n"
+          + "A: " + str(A) + "\n\n"
+          + "S: " + str(S) + "\n\n"
+          + "h: " + str(h) + "\n\n"
+          + "sliceR: " + str(sliceR).encode("hex") + "\n\n"
+          + "\n--------------------\n" )
+  print(msg)
   if scalarmult(B,S) != edwards(R,scalarmult(A,h)):
     raise Exception("signature does not pass verification")
+
+def checkvalidHex(s,m,pk):
+  return checkvalid(s.decode("hex"),m.decode("hex"),pk.decode("hex"))
+
+samplePoint = [0x00000045,0x00000065]
+
+pointEncoded = encodepoint(samplePoint)
+
+pointDecoded = decodepoint(pointEncoded)
+

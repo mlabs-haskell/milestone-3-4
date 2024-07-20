@@ -16,9 +16,59 @@ import Data.ByteString.Internal qualified as BS
 import Debug.Trace qualified as Debug
 import GHC.ByteOrder (ByteOrder (BigEndian))
 import PlutusTx.Builtins
+  ( BuiltinByteString,
+    Integer,
+    addInteger,
+    andByteString,
+    complementByteString,
+    consByteString,
+    integerToByteString,
+    lengthOfByteString,
+    lessThanInteger,
+    orByteString,
+    replicateByte,
+    rotateByteString,
+    shiftByteString,
+    sliceByteString,
+    subtractInteger,
+    writeBits,
+    xorByteString,
+  )
 import PlutusTx.Builtins.Internal (BuiltinBool (..), BuiltinByteString (..), BuiltinList (..), BuiltinPair (..))
 import PlutusTx.Prelude
+  ( AdditiveGroup ((-)),
+    AdditiveSemigroup ((+)),
+    Bool (..),
+    BuiltinByteString,
+    Eq ((==)),
+    Integer,
+    MultiplicativeSemigroup ((*)),
+    Ord ((<=)),
+    Semigroup ((<>)),
+    byteStringToInteger,
+    concatMap,
+    consByteString,
+    divMod,
+    flip,
+    fst,
+    integerToByteString,
+    lengthOfByteString,
+    otherwise,
+    replicate,
+    sliceByteString,
+    snd,
+    ($),
+    (.),
+  )
 import Prelude qualified as P
+
+doTraces :: Bool
+doTraces = False
+
+doTrace :: P.String -> a -> a
+doTrace msg a
+  | doTraces = Debug.trace msg a
+  | otherwise = a
 
 testSha512v2 :: BS.ByteString -> P.IO ()
 testSha512v2 str = do
@@ -46,7 +96,7 @@ sha512Ref :: BuiltinByteString -> BuiltinByteString
 sha512Ref (BuiltinByteString inp) = BuiltinByteString $ Reference.hash inp
 
 sha512 :: BuiltinByteString -> BuiltinByteString
-sha512 bs = Debug.trace msg out
+sha512 bs = doTrace msg out
   where
     msg =
       prettify
@@ -75,7 +125,7 @@ runSHA s next input
        in runSHA s' next rest
 
 padSHA512 :: BuiltinByteString -> BuiltinByteString
-padSHA512 bs = Debug.trace msg $ result
+padSHA512 bs = doTrace msg $ result
   where
     msg = prettify $ ["padSHA512", "Input: " <> P.show bs, "Output: " <> P.show result]
     result = bs <> padding
@@ -107,7 +157,7 @@ initialSHA512State =
     (f 0x1f83_d9ab_fb41_bd6b)
     (f 0x5be0_cd19_137e_2179)
   where
-    f = Debug.trace "initialSHA512State const" . UInt64 . integerToByteString BigEndian 8
+    f = doTrace "initialSHA512State const" . UInt64 . integerToByteString BigEndian 8
 
 div :: Integer -> Integer -> Integer
 div a b = fst $ divMod a b
@@ -116,7 +166,7 @@ mod :: Integer -> Integer -> Integer
 mod a b = snd $ divMod a b
 
 setBit :: Integer -> Bool -> BuiltinByteString -> BuiltinByteString
-setBit ix v bs = Debug.trace msg result
+setBit ix v bs = doTrace msg result
   where
     msg = prettify ["setBit", "ix: " <> P.show ix, "v: " <> P.show v, "input: " <> P.show bs, "result: " <> P.show result]
     result = writeBits bs (BuiltinList [(BuiltinPair (ix, BuiltinBool v))])
@@ -146,7 +196,7 @@ generic_pad a b lSize len =
           "len result: " <> P.show (lengthOfByteString result),
           "result len mod lSize: " <> P.show (lengthOfByteString result `mod` lSize)
         ]
-   in Debug.trace (prettify msg) result
+   in doTrace (prettify msg) result
 
 -- Given a, b, and l, calculate the smallest k such that (l + 1 + k) mod b = a.
 calc_k :: Integer -> Integer -> Integer -> Integer
@@ -159,7 +209,7 @@ calc_k a b l =
 
 -- faking a state monad b/c not sure if a real one will screw w/ performance too much?
 next64 :: BuiltinByteString -> (UInt64, BuiltinByteString)
-next64 bs = {- Debug.trace ("next64:\n\nthis: " <> P.show this <> "\n\nrest: " <> P.show rest <> "\n" <> replicate 20 '-' <> "\n\n") -} (unsafeFromBS this, rest)
+next64 bs = {- doTrace ("next64:\n\nthis: " <> P.show this <> "\n\nrest: " <> P.show rest <> "\n" <> replicate 20 '-' <> "\n\n") -} (unsafeFromBS this, rest)
   where
     len = lengthOfByteString bs
     this = sliceByteString 0 8 bs
@@ -335,7 +385,7 @@ limit = 18_446_744_073_709_551_615
 
 getSHA512Sched :: BuiltinByteString -> (SHA512Sched, BuiltinByteString)
 getSHA512Sched bs =
-  Debug.trace "getSHA512Sched"
+  doTrace "getSHA512Sched"
     $ let (w00, rest00) = next64 bs
           (w01, rest01) = next64 rest00
           (w02, rest02) = next64 rest01
